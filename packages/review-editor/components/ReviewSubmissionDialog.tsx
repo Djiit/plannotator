@@ -6,8 +6,10 @@ import {
   exportReviewFeedback,
   formatCallFlowAnnotationTargets,
   formatConventionalPrefix,
+  OUTDATED_ANNOTATION_LABEL,
 } from '../utils/exportFeedback';
 import { useCompactTouchLayout } from '@plannotator/ui/hooks/useIsMobile';
+import { canPostInline } from '../utils/codeAnnotationAnchor';
 import {
   Dialog,
   DialogContent,
@@ -85,7 +87,10 @@ function buildAnnotationFileComments(
   annotations: CodeAnnotation[],
 ): SubmissionTarget['fileComments'] {
   return annotations
-    .filter(a => (a.scope ?? 'line') === 'line')
+    // Outdated comments (#1590) carry line numbers from an earlier version of
+    // the PR; posting them inline would pin them to whatever code sits there
+    // now. They ride the review body instead (buildFileScopedBody).
+    .filter(a => (a.scope ?? 'line') === 'line' && !a.outdated)
     .map(ann => {
       const ccPrefix = formatConventionalPrefix(ann.conventionalLabel, ann.decorations);
       let body = ccPrefix + (ann.text ?? '');
@@ -118,6 +123,15 @@ function buildFileScopedBody(annotations: CodeAnnotation[]): string {
       parts.push(`**${a.filePath}:** ${a.text ?? ''}${callFlowContext}`.trim());
     } else if (scope === 'general' && (a.text || callFlowContext)) {
       parts.push(`${a.text ?? ''}${callFlowContext}`.trim());
+    } else if (scope === 'line' && a.outdated && (a.text || a.suggestedCode || callFlowContext)) {
+      const lines = a.lineStart === a.lineEnd ? `L${a.lineStart}` : `L${a.lineStart}-L${a.lineEnd}`;
+      const suggestion = a.suggestedCode ? `\n\nSuggested code:\n\`\`\`\n${a.suggestedCode}\n\`\`\`` : '';
+      // The code the comment was written on, so the PR reader can find it
+      // even though the line numbers no longer point there.
+      const commentedOn = a.anchorText !== undefined ? `\n\nCommented on:\n\`\`\`\n${a.anchorText}\n\`\`\`` : '';
+      parts.push(
+        `**${a.filePath} (${lines}, ${a.side}):** ${OUTDATED_ANNOTATION_LABEL} ${a.text ?? ''}${callFlowContext}${commentedOn}${suggestion}`.trim(),
+      );
     }
   }
   return parts.join('\n\n');
@@ -185,6 +199,11 @@ export function buildReviewSubmission(
   currentPrUrl: string | undefined,
   currentDiffPaths: Set<string>,
   currentPrMeta?: { number: number; title: string; repo: string },
+  /** PR url → snapshot id of the diff last seen for that PR's layer view
+   *  (#1590). When given, a line comment is posted inline only if its
+   *  `anchorSnapshot` equals that snapshot; anything else (outdated, or
+   *  coordinates from a diff we cannot vouch for) goes in the review body. */
+  knownSnapshots?: ReadonlyMap<string, string>,
 ): ReviewSubmission {
   const targets: SubmissionTarget[] = [];
   const orphanAnnotations: { reason: 'full-stack' | 'unmapped'; ann: CodeAnnotation }[] = [];
@@ -240,7 +259,12 @@ export function buildReviewSubmission(
   const currentKey = currentPrUrl ?? '_current';
   let editorCommentsAttached = false;
 
-  for (const [prUrl, annotations] of byPR) {
+  for (const [prUrl, groupAnnotations] of byPR) {
+    const annotations = groupAnnotations.map((ann) =>
+      (ann.scope ?? 'line') === 'line' && !ann.outdated && !canPostInline(ann, knownSnapshots, currentPrUrl)
+        ? { ...ann, outdated: true }
+        : ann,
+    );
     const sample = annotations[0];
     const fileComments = buildAnnotationFileComments(annotations);
     const fileScopedBody = buildFileScopedBody(annotations);
