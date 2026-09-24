@@ -1317,8 +1317,20 @@ function cleanupVibeHooks(
     return;
   }
 
+  const label = "Plannotator Vibe plan-review hook";
+  if (request.dryRun) {
+    state.planned.push(`${label} in ${filePath}`);
+    return;
+  }
+
+  const lineEnding = content.includes("\r\n") ? "\r\n" : "\n";
   try {
-    writeFileSync(filePath, nextLines.join("\n").replace(/\s+$/, "\n"));
+    writeFileSync(
+      filePath,
+      nextLines.join(lineEnding).replace(/\s+$/, lineEnding),
+      "utf8",
+    );
+    state.removed.push(`${label} in ${filePath}`);
   } catch (error) {
     reportHostCleanupFailure(
       `Could not rewrite ${filePath}`,
@@ -1326,7 +1338,7 @@ function cleanupVibeHooks(
       recovery,
       request,
       state,
-  );
+    );
   }
 }
 
