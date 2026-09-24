@@ -947,7 +947,11 @@ REM the Vibe-specific skills are not installed either, because they run
 REM "PLANNOTATOR_ORIGIN=mistral-vibe plannotator ...", a POSIX env-prefix that
 REM Vibe's Windows shell tool only understands when it resolved Git Bash (it
 REM falls back to PowerShell otherwise). Vibe also reads ~/.agents/skills, which
-REM this installer fills with the shell-neutral core skills.
+REM this installer fills with the shell-neutral core skills, so
+REM /plannotator-review and /plannotator-annotate work there with no Vibe origin
+REM label. /plannotator-last is NOT supported for Vibe on Windows yet: without
+REM PLANNOTATOR_ORIGIN it takes the Claude Code transcript path, so it fails or
+REM reads the wrong session.
 if not defined VIBE_HOME set "VIBE_HOME=%USERPROFILE%\.vibe"
 set "VIBE_AVAILABLE=0"
 if exist "!VIBE_HOME!" set "VIBE_AVAILABLE=1"
@@ -1019,8 +1023,9 @@ if "!VIBE_AVAILABLE!"=="1" if "!SKIP_VIBE!"=="0" (
     echo the Vibe origin from the hook payload. Hooks are stable in Vibe
     echo 2.25+, so no config.toml flag is needed.
     echo.
-    echo The Vibe-specific skills are not installed on Windows; Vibe picks up the
-    echo shared Plannotator skills from %USERPROFILE%\.agents\skills instead.
+    echo The Vibe-specific skills are not installed on Windows. Vibe picks up the
+    echo shared review and annotate skills from %USERPROFILE%\.agents\skills instead;
+    echo /plannotator-last is not supported for Vibe on Windows yet.
 )
 
 REM Clear any cached OpenCode plugin to force fresh download on next run.
@@ -1595,7 +1600,8 @@ if "!VIBE_AVAILABLE!"=="1" (
         echo No files under !VIBE_HOME! were written or removed.
     ) else (
         echo Vibe detected. The Windows installer writes nothing under !VIBE_HOME!.
-        echo Vibe reads the shared Plannotator skills from ~/.agents/skills. The
+        echo Vibe uses the shared review and annotate skills from ~/.agents/skills
+        echo ^(/plannotator-last is not supported for Vibe on Windows yet^). The
         echo plan-review hook is macOS/Linux-only; see the manual setup instructions
         echo printed above to wire plan review on a macOS/Linux box.
         echo Note: improve-context ^(plan-mode enrichment^) is not wired for Vibe.

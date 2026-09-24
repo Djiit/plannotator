@@ -752,8 +752,10 @@ $kiroAvailable = [bool](Get-Command kiro-cli -ErrorAction SilentlyContinue) -or 
 # run `PLANNOTATOR_ORIGIN=mistral-vibe plannotator ...`, a POSIX env-prefix that
 # Vibe's Windows shell tool only understands when it resolved Git Bash (it falls
 # back to PowerShell otherwise). Vibe also reads ~/.agents/skills, which this
-# installer fills with the shell-neutral core skills, so /plannotator-review,
-# /plannotator-annotate and /plannotator-last still work there.
+# installer fills with the shell-neutral core skills, so /plannotator-review and
+# /plannotator-annotate work there (with no Vibe origin label). /plannotator-last
+# is NOT supported for Vibe on Windows yet: without PLANNOTATOR_ORIGIN it takes
+# the Claude Code transcript path, so it fails or reads the wrong session.
 $vibeHome = if ($env:VIBE_HOME) { $env:VIBE_HOME } else { Join-Path $env:USERPROFILE ".vibe" }
 $vibeAvailable = [bool](Test-Path $vibeHome)
 
@@ -834,8 +836,9 @@ if ($vibeAvailable -and $skipVibeResolved) {
     Write-Host "the Vibe origin from the hook payload. Hooks are stable in Vibe"
     Write-Host "2.25+, so no config.toml flag is needed."
     Write-Host ""
-    Write-Host "The Vibe-specific skills are not installed on Windows; Vibe picks up the"
-    Write-Host "shared Plannotator skills from ~/.agents/skills instead."
+    Write-Host "The Vibe-specific skills are not installed on Windows. Vibe picks up the"
+    Write-Host "shared review and annotate skills from ~/.agents/skills instead;"
+    Write-Host "/plannotator-last is not supported for Vibe on Windows yet."
 }
 
 # Clear OpenCode plugin cache. An OpenCode opt-out (#1178) leaves OpenCode's
@@ -1575,7 +1578,8 @@ if ($vibeAvailable -and $skipVibeResolved) {
     Write-Host "No files under $vibeHome were written or removed."
 } elseif ($vibeAvailable) {
     Write-Host "Vibe detected. The Windows installer writes nothing under $vibeHome."
-    Write-Host "Vibe reads the shared Plannotator skills from ~/.agents/skills. The"
+    Write-Host "Vibe uses the shared review and annotate skills from ~/.agents/skills"
+    Write-Host "(/plannotator-last is not supported for Vibe on Windows yet). The"
     Write-Host "plan-review hook is macOS/Linux-only; see the manual setup instructions"
     Write-Host "printed above to wire plan review on a macOS/Linux box."
     Write-Host "Note: improve-context (plan-mode enrichment) is not wired for Vibe."
