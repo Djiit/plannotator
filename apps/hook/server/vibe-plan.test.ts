@@ -9,7 +9,14 @@
  */
 
 import { describe, expect, test, afterEach, beforeEach } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  utimesSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -119,6 +126,40 @@ describe("findVibePlanInTranscript", () => {
     writeFileSync(transcript, [
       toolResultLine({ file_path: join(home, "plans", "gone.md"), bytes_written: 1, content: "x" }),
     ].join("\n"));
+    expect(findVibePlanInTranscript(transcript, { vibeHome: home })).toBeNull();
+  });
+
+  test("pins through a symlinked VIBE_HOME (transcript names the real path)", () => {
+    const home = makeVibeHome();
+    const planPath = join(home, "plans", "1789000002-linked.md");
+    writeFileSync(planPath, "# Linked");
+    const linkParent = mkdtempSync(join(tmpdir(), "vibe-link-"));
+    tempDirs.push(linkParent);
+    const linkedHome = join(linkParent, "vibe");
+    symlinkSync(home, linkedHome, "dir");
+    const transcript = join(home, "t.jsonl");
+    writeFileSync(transcript, toolResultLine({ file_path: planPath, bytes_written: 1, content: "x" }));
+    expect(findVibePlanInTranscript(transcript, { vibeHome: linkedHome })).toBe(planPath);
+    // And the reverse: VIBE_HOME is real, the transcript spells the link.
+    const linkedPlan = join(linkedHome, "plans", "1789000002-linked.md");
+    writeFileSync(transcript, toolResultLine({ file_path: linkedPlan, bytes_written: 1, content: "x" }));
+    expect(findVibePlanInTranscript(transcript, { vibeHome: home })).toBe(linkedPlan);
+  });
+
+  test("tolerates a non-normalized transcript path but not a plans subdirectory", () => {
+    const home = makeVibeHome();
+    writeFileSync(join(home, "plans", "1789000003-slash.md"), "# Slash");
+    // A doubled separator / `.` segment used to leave dirname() with a
+    // trailing slash (or a `.`) that the exact string compare missed.
+    const unnormalized = `${home}/./plans//1789000003-slash.md`;
+    const transcript = join(home, "t.jsonl");
+    writeFileSync(transcript, toolResultLine({ file_path: unnormalized, bytes_written: 1, content: "x" }));
+    expect(findVibePlanInTranscript(transcript, { vibeHome: `${home}/` })).toBe(unnormalized);
+
+    mkdirSync(join(home, "plans", "nested"));
+    const nested = join(home, "plans", "nested", "deep.md");
+    writeFileSync(nested, "# Nested");
+    writeFileSync(transcript, toolResultLine({ file_path: nested, bytes_written: 1, content: "x" }));
     expect(findVibePlanInTranscript(transcript, { vibeHome: home })).toBeNull();
   });
 

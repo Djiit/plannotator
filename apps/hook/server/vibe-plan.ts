@@ -19,8 +19,14 @@
  *   $VIBE_HOME env var → ~/.vibe (default), then appends /plans.
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
-import { join, dirname, sep } from "node:path";
+import {
+  readFileSync,
+  readdirSync,
+  statSync,
+  existsSync,
+  realpathSync,
+} from "node:fs";
+import { join, dirname, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 
 /** Freshness window for the mtime fallback: a plan older than this is treated
@@ -42,10 +48,24 @@ export function resolveVibePlansDir(vibeHomeOverride?: string): string {
   return join(vibeHome, "plans");
 }
 
+/**
+ * Canonical form of a directory for comparison: resolved (which also drops a
+ * trailing slash) and, when it exists, realpath'd so a symlinked VIBE_HOME or
+ * a symlinked path segment in the transcript still matches. A path that
+ * cannot be realpath'd (missing, unreadable) falls back to its resolved form.
+ */
+function canonicalDir(dir: string): string {
+  const resolved = resolve(dir);
+  try {
+    return realpathSync(resolved);
+  } catch {
+    return resolved;
+  }
+}
+
 function isInsidePlansDir(filePath: string, plansDir: string): boolean {
-  const dir = dirname(filePath);
-  if (dir !== plansDir) return false;
-  return filePath.endsWith(".md");
+  if (!filePath.endsWith(".md")) return false;
+  return canonicalDir(dirname(filePath)) === canonicalDir(plansDir);
 }
 
 /**
