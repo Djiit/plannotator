@@ -677,11 +677,23 @@ describe("install.ps1", () => {
     // plannotator-archive no longer ships as a skill — a stale installed copy
     // is removed unconditionally from every skill scope.
     expect(script).toContain(
-      'foreach ($scope in @($claudeSkillsDir, $agentsSkillsDir, "$env:USERPROFILE\\.kiro\\skills", (Join-Path $vibeHome "skills")))',
+      'foreach ($scope in @($claudeSkillsDir, $agentsSkillsDir, "$env:USERPROFILE\\.kiro\\skills"))',
     );
     expect(script).toContain('Join-Path $scope "plannotator-archive"');
     // The removed /plannotator-archive OpenCode command stub is swept too.
     expect(script).toContain('Removing stale plannotator-archive command');
+  });
+
+  test("detects Vibe only by its home and writes nothing under it", () => {
+    // A `vibe` binary on PATH alone must not count as Vibe detected
+    // (install.sh parity).
+    expect(script).toContain("$vibeAvailable = [bool](Test-Path $vibeHome)");
+    expect(script).not.toContain("Get-Command vibe");
+    // The apps/vibe skills use a POSIX env-prefix that Vibe's PowerShell
+    // fallback cannot run, so Windows never copies them (or anything else)
+    // into the Vibe home.
+    expect(script).not.toContain("apps\\vibe\\skills\\");
+    expect(script).not.toContain('Join-Path $vibeHome "skills"');
   });
 
   test("does not treat a skills-only Codex home as configured", () => {
@@ -947,11 +959,21 @@ describe("install.cmd", () => {
     // plannotator-archive no longer ships as a skill — a stale installed copy
     // is removed unconditionally from every skill scope.
     expect(script).toContain(
-      'for %%D in ("!CLAUDE_SKILLS_DIR!" "!AGENTS_SKILLS_DIR!" "!KIRO_SKILLS_DIR!" "!VIBE_SKILLS_DIR!") do',
+      'for %%D in ("!CLAUDE_SKILLS_DIR!" "!AGENTS_SKILLS_DIR!" "!KIRO_SKILLS_DIR!") do',
     );
     expect(script).toContain('rmdir /s /q "%%~D\\plannotator-archive"');
     // The removed /plannotator-archive OpenCode command stub is swept too.
     expect(script).toContain('del /q "!OPENCODE_COMMANDS_DIR!\\plannotator-archive.md"');
+  });
+
+  test("detects Vibe only by its home and writes nothing under it", () => {
+    // A vibe executable on PATH alone must not count as Vibe detected
+    // (install.sh parity).
+    expect(script).toContain('if exist "!VIBE_HOME!" set "VIBE_AVAILABLE=1"');
+    expect(script).not.toContain("where vibe");
+    // Windows never copies the POSIX-only apps/vibe skills into the Vibe home.
+    expect(script).not.toContain("apps\\vibe\\skills\\");
+    expect(script).not.toContain("VIBE_SKILLS_DIR");
   });
 
   test("does not treat a skills-only Codex home as configured", () => {

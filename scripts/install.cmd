@@ -939,16 +939,17 @@ if !ERRORLEVEL! equ 0 set "KIRO_AVAILABLE=1"
 if exist "%USERPROFILE%\.kiro" set "KIRO_AVAILABLE=1"
 
 REM Vibe (Mistral's TUI coding agent) stores everything under VIBE_HOME when
-REM set, falling back to %USERPROFILE%\.vibe. Auto-detected like the others:
-REM PATH executable or an existing ~/.vibe. The plan-review hook runs on
-REM macOS/Linux only (Vibe spawns hooks via /bin/sh; Windows uses cmd.exe and
-REM a .sh launcher is not executable), so the Windows installer never writes
-REM hooks.toml - it prints manual setup instructions, mirroring Codex-on-Windows.
-REM Skills still install to %VIBE_HOME%\skills.
+REM set, falling back to %USERPROFILE%\.vibe. Detected only when that home
+REM exists, matching install.sh: a vibe executable on PATH alone is not enough.
+REM The Windows installer writes NOTHING under the Vibe home. The plan-review
+REM hook is macOS/Linux-only, so only manual hook instructions are printed; and
+REM the Vibe-specific skills are not installed either, because they run
+REM "PLANNOTATOR_ORIGIN=mistral-vibe plannotator ...", a POSIX env-prefix that
+REM Vibe's Windows shell tool only understands when it resolved Git Bash (it
+REM falls back to PowerShell otherwise). Vibe also reads ~/.agents/skills, which
+REM this installer fills with the shell-neutral core skills.
 if not defined VIBE_HOME set "VIBE_HOME=%USERPROFILE%\.vibe"
 set "VIBE_AVAILABLE=0"
-where vibe >nul 2>&1
-if !ERRORLEVEL! equ 0 set "VIBE_AVAILABLE=1"
 if exist "!VIBE_HOME!" set "VIBE_AVAILABLE=1"
 REM HONEST three-state reporting (#1178): detected-but-skipped is its own
 REM state, never conflated with "not detected". A Codex opt-out leaves the
@@ -989,7 +990,7 @@ REM Windows uses cmd.exe and a .sh launcher is not executable). The Windows
 REM installer never writes hooks.toml automatically - it prints manual setup
 REM instructions, mirroring Codex-on-Windows. A Vibe opt-out (#1178) suppresses
 REM the manual instructions and this run neither creates, updates, nor removes
-REM anything under the Vibe home. Skills still install to %VIBE_HOME%\skills.
+REM anything under the Vibe home (nothing is written there on Windows anyway).
 if "!VIBE_AVAILABLE!"=="1" if "!SKIP_VIBE!"=="1" (
     echo.
     echo Vibe: detected, skipped ^(!SKIP_VIBE_SOURCE!^).
@@ -1018,7 +1019,8 @@ if "!VIBE_AVAILABLE!"=="1" if "!SKIP_VIBE!"=="0" (
     echo the Vibe origin from the hook payload. Hooks are stable in Vibe
     echo 2.25+, so no config.toml flag is needed.
     echo.
-    echo Vibe skills are still installed to !VIBE_HOME!\skills from this run.
+    echo The Vibe-specific skills are not installed on Windows; Vibe picks up the
+    echo shared Plannotator skills from %USERPROFILE%\.agents\skills instead.
 )
 
 REM Clear any cached OpenCode plugin to force fresh download on next run.
@@ -1221,7 +1223,6 @@ if "!SKIP_SKILLS!"=="1" (
 set "CHECKOUT_FAILED=0"
 set "KIRO_SKILLS_DIR=%USERPROFILE%\.kiro\skills"
 set "KIRO_AGENTS_DIR=%USERPROFILE%\.kiro\agents"
-set "VIBE_SKILLS_DIR=!VIBE_HOME!\skills"
 set "OPENCODE_COMMANDS_DIR=%USERPROFILE%\.config\opencode\commands"
 set "GEMINI_COMMANDS_DIR=%USERPROFILE%\.gemini\commands"
 set "SKILLS_TMP=%TEMP%\plannotator-skills-%RANDOM%"
@@ -1357,27 +1358,9 @@ if "!CLONE_OK!"=="1" (
         echo Installed Kiro skills to !KIRO_SKILLS_DIR!\ and agent to !KIRO_AGENTS_DIR!\plannotator.json
     )
 
-    REM Vibe - hand-maintained skills (origin baked in) + single-sourced
-    REM knowledge skill. A Vibe opt-out (#1178) leaves !VIBE_HOME! untouched.
-    REM Skills work cross-platform; only the hook is macOS/Linux-only.
-    if "!VIBE_AVAILABLE!"=="1" if "!SKIP_VIBE!"=="0" if exist "apps\vibe\skills" (
-        if not exist "!VIBE_SKILLS_DIR!" mkdir "!VIBE_SKILLS_DIR!"
-        REM Vibe-specific skills with origin baked in come from apps\vibe\skills.
-        for %%S in (plannotator-review plannotator-annotate plannotator-last) do (
-            if exist "apps\vibe\skills\%%S" (
-                if exist "!VIBE_SKILLS_DIR!\%%S" rmdir /s /q "!VIBE_SKILLS_DIR!\%%S" >nul 2>&1
-                xcopy /s /i /y /q "apps\vibe\skills\%%S" "!VIBE_SKILLS_DIR!\%%S\" >nul 2>&1
-            )
-        )
-        REM The plannotator knowledge skill (CLI reference) is agent-agnostic and
-        REM single-sourced in apps\skills\core; Vibe gets the same copy every
-        REM other scope does.
-        if exist "apps\skills\core\plannotator" (
-            if exist "!VIBE_SKILLS_DIR!\plannotator" rmdir /s /q "!VIBE_SKILLS_DIR!\plannotator" >nul 2>&1
-            xcopy /s /i /y /q "apps\skills\core\plannotator" "!VIBE_SKILLS_DIR!\plannotator\" >nul 2>&1
-        )
-        echo Installed Vibe skills to !VIBE_SKILLS_DIR!\
-    )
+    REM Vibe - no skills are copied to !VIBE_HOME! on Windows. The apps\vibe
+    REM skills use a POSIX env-prefix that Vibe's PowerShell fallback cannot
+    REM run; Vibe reads the shell-neutral core skills from ~/.agents/skills.
 
     popd
 ) else (
@@ -1414,14 +1397,12 @@ for %%C in (plannotator-review plannotator-annotate plannotator-last) do (
 
 REM plannotator-archive no longer ships as a skill. Remove any stale installed
 REM copy from every skill scope so upgraders don't keep a dead skill around.
-for %%D in ("!CLAUDE_SKILLS_DIR!" "!AGENTS_SKILLS_DIR!" "!KIRO_SKILLS_DIR!" "!VIBE_SKILLS_DIR!") do (
+for %%D in ("!CLAUDE_SKILLS_DIR!" "!AGENTS_SKILLS_DIR!" "!KIRO_SKILLS_DIR!") do (
     REM A Kiro opt-out leaves ~/.kiro entirely untouched - including this sweep.
-    REM A Vibe opt-out leaves !VIBE_HOME! entirely untouched - including this sweep.
     REM A skills opt-out leaves every skill scope untouched, sweep included.
     set "SCOPE_OK=1"
     if "!SKIP_SKILLS!"=="1" set "SCOPE_OK=0"
     if /i "%%~D"=="!KIRO_SKILLS_DIR!" if "!SKIP_KIRO!"=="1" set "SCOPE_OK=0"
-    if /i "%%~D"=="!VIBE_SKILLS_DIR!" if "!SKIP_VIBE!"=="1" set "SCOPE_OK=0"
     if "!SCOPE_OK!"=="1" if exist "%%~D\plannotator-archive" (
         rmdir /s /q "%%~D\plannotator-archive" >nul 2>&1
         echo Removed stale plannotator-archive skill from %%~D\plannotator-archive
@@ -1611,23 +1592,17 @@ echo.
 if "!VIBE_AVAILABLE!"=="1" (
     if "!SKIP_VIBE!"=="1" (
         echo Vibe was detected, but the integration was skipped ^(!SKIP_VIBE_SOURCE!^).
-        echo No files under !VIBE_HOME! were written or removed. Re-run without
-        echo the opt-out to add Vibe skills.
-    ) else if "!SKIP_SKILLS!"=="1" (
-        echo Vibe was detected, but skills were skipped ^(!SKIP_SKILLS_SOURCE!^), so no
-        echo Vibe skills were installed. The plan-review hook is macOS/Linux-only
-        echo and is not wired from the Windows installer. Re-run without the
-        echo opt-out to add Vibe skills.
+        echo No files under !VIBE_HOME! were written or removed.
     ) else (
-        echo Vibe skills are installed to !VIBE_HOME!\skills\
-        echo The plan-review hook is macOS/Linux-only ^(Vibe spawns hooks via /bin/sh;
-        echo on Windows a .sh launcher is not executable^). See the manual setup
-        echo instructions printed above to wire plan review on a macOS/Linux box.
+        echo Vibe detected. The Windows installer writes nothing under !VIBE_HOME!.
+        echo Vibe reads the shared Plannotator skills from ~/.agents/skills. The
+        echo plan-review hook is macOS/Linux-only; see the manual setup instructions
+        echo printed above to wire plan review on a macOS/Linux box.
         echo Note: improve-context ^(plan-mode enrichment^) is not wired for Vibe.
     )
 ) else (
-    echo Vibe was not detected. After installing Mistral Vibe, rerun this installer
-    echo to add Vibe skills.
+    echo Vibe was not detected ^(no !VIBE_HOME!^). Run Mistral Vibe once, then
+    echo rerun this installer to see the Vibe setup notes.
 )
 
 echo.
