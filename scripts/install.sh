@@ -2216,29 +2216,30 @@ elif [ "$kiro_available" -eq 1 ]; then
 else
     echo "Kiro was not detected. After installing Kiro, rerun this installer to add Kiro skills."
 fi
-echo ""
-echo "=========================================="
-echo "  VIBE USERS"
-echo "=========================================="
-echo ""
-if [ "$vibe_available" -eq 1 ] && [ "$skip_vibe" -eq 1 ]; then
-    echo "Vibe was detected, but the integration was skipped (${skip_vibe_source})."
-    echo "No files under ${VIBE_HOME} were written or removed. Re-run without the"
-    echo "opt-out to add the plan-review hook and Vibe skills."
-elif [ "$vibe_available" -eq 1 ] && [ "$skip_skills" -eq 1 ]; then
-    echo "Vibe was detected, and the plan-review hook is installed at ${VIBE_HOME}/hooks.toml."
-    echo "Skills were skipped (${skip_skills_source}), so no Vibe skills were installed."
-    echo "Re-run without the opt-out to add them."
-elif [ "$vibe_available" -eq 1 ]; then
-    echo "Plan review is configured through the Vibe pre_tool hook on exit_plan_mode"
-    echo "in ${VIBE_HOME}/hooks.toml (requires Vibe 2.25 or newer)."
+# The Vibe section prints only when Vibe was detected; without a Vibe home
+# the installer says nothing about Vibe at all.
+if [ "$vibe_available" -eq 1 ]; then
     echo ""
-    echo "Vibe skills are installed to ${VIBE_SKILLS_DIR}/"
-    echo "Note: improve-context (plan-mode enrichment) is not wired for Vibe —"
-    echo "only the plan-review gate runs."
-else
-    echo "Vibe was not detected. After installing Mistral Vibe, rerun this installer"
-    echo "to configure plan review."
+    echo "=========================================="
+    echo "  VIBE USERS"
+    echo "=========================================="
+    echo ""
+    if [ "$skip_vibe" -eq 1 ]; then
+        echo "Vibe was detected, but the integration was skipped (${skip_vibe_source})."
+        echo "No files under ${VIBE_HOME} were written or removed. Re-run without the"
+        echo "opt-out to add the plan-review hook and Vibe skills."
+    elif [ "$skip_skills" -eq 1 ]; then
+        echo "Vibe was detected, and the plan-review hook is installed at ${VIBE_HOME}/hooks.toml."
+        echo "Skills were skipped (${skip_skills_source}), so no Vibe skills were installed."
+        echo "Re-run without the opt-out to add them."
+    else
+        echo "Plan review is configured through the Vibe pre_tool hook on exit_plan_mode"
+        echo "in ${VIBE_HOME}/hooks.toml (requires Vibe 2.25 or newer)."
+        echo ""
+        echo "Vibe skills are installed to ${VIBE_SKILLS_DIR}/"
+        echo "Note: improve-context (plan-mode enrichment) is not wired for Vibe —"
+        echo "only the plan-review gate runs."
+    fi
 fi
 echo ""
 echo "=========================================="

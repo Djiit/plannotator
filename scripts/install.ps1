@@ -1568,24 +1568,25 @@ if ($kiroAvailable -and $skipKiroResolved) {
 } else {
     Write-Host "Kiro was not detected. After installing Kiro, rerun this installer to add Kiro skills."
 }
-Write-Host ""
-Write-Host "=========================================="
-Write-Host "  VIBE USERS"
-Write-Host "=========================================="
-Write-Host ""
-if ($vibeAvailable -and $skipVibeResolved) {
-    Write-Host "Vibe was detected, but the integration was skipped ($skipVibeSource)."
-    Write-Host "No files under $vibeHome were written or removed."
-} elseif ($vibeAvailable) {
-    Write-Host "Vibe detected. The Windows installer writes nothing under $vibeHome."
-    Write-Host "Vibe uses the shared review and annotate skills from ~/.agents/skills"
-    Write-Host "(/plannotator-last is not supported for Vibe on Windows yet). The"
-    Write-Host "plan-review hook is macOS/Linux-only; see the manual setup instructions"
-    Write-Host "printed above to wire plan review on a macOS/Linux box."
-    Write-Host "Note: improve-context (plan-mode enrichment) is not wired for Vibe."
-} else {
-    Write-Host "Vibe was not detected (no $vibeHome). Run Mistral Vibe once, then rerun"
-    Write-Host "this installer to see the Vibe setup notes."
+# The Vibe section prints only when Vibe was detected; without a Vibe home
+# the installer says nothing about Vibe at all.
+if ($vibeAvailable) {
+    Write-Host ""
+    Write-Host "=========================================="
+    Write-Host "  VIBE USERS"
+    Write-Host "=========================================="
+    Write-Host ""
+    if ($skipVibeResolved) {
+        Write-Host "Vibe was detected, but the integration was skipped ($skipVibeSource)."
+        Write-Host "No files under $vibeHome were written or removed."
+    } else {
+        Write-Host "Vibe detected. The Windows installer writes nothing under $vibeHome."
+        Write-Host "Vibe uses the shared review and annotate skills from ~/.agents/skills"
+        Write-Host "(/plannotator-last is not supported for Vibe on Windows yet). The"
+        Write-Host "plan-review hook is macOS/Linux-only; see the manual setup instructions"
+        Write-Host "printed above to wire plan review on a macOS/Linux box."
+        Write-Host "Note: improve-context (plan-mode enrichment) is not wired for Vibe."
+    }
 }
 Write-Host ""
 Write-Host "=========================================="

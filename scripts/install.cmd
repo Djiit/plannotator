@@ -1589,12 +1589,14 @@ if "!KIRO_AVAILABLE!"=="1" (
     echo Kiro was not detected. After installing Kiro, rerun this installer to add Kiro skills.
 )
 
-echo.
-echo ==========================================
-echo   VIBE USERS
-echo ==========================================
-echo.
+REM The Vibe section prints only when Vibe was detected; without a Vibe home
+REM the installer says nothing about Vibe at all.
 if "!VIBE_AVAILABLE!"=="1" (
+    echo.
+    echo ==========================================
+    echo   VIBE USERS
+    echo ==========================================
+    echo.
     if "!SKIP_VIBE!"=="1" (
         echo Vibe was detected, but the integration was skipped ^(!SKIP_VIBE_SOURCE!^).
         echo No files under !VIBE_HOME! were written or removed.
@@ -1606,9 +1608,6 @@ if "!VIBE_AVAILABLE!"=="1" (
         echo printed above to wire plan review on a macOS/Linux box.
         echo Note: improve-context ^(plan-mode enrichment^) is not wired for Vibe.
     )
-) else (
-    echo Vibe was not detected ^(no !VIBE_HOME!^). Run Mistral Vibe once, then
-    echo rerun this installer to see the Vibe setup notes.
 )
 
 echo.
