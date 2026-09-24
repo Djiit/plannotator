@@ -29,6 +29,9 @@ plannotator/
 │   │   └── lib/                  # Shared command wrapper helpers
 │   ├── marketing/                # Marketing site, docs, and blog (plannotator.ai)
 │   │   └── astro.config.mjs      # Astro 5 static site with content collections
+│   ├── vibe/                     # Mistral Vibe integration source (consumed by scripts/install.sh; auto-detected via $VIBE_HOME, default ~/.vibe)
+│   │   ├── hooks/hooks.toml      # Reference copy of the managed pre_tool hook block install.sh writes into $VIBE_HOME/hooks.toml (macOS/Linux only)
+│   │   └── skills/               # Vibe-specific skills (review, annotate, last) with PLANNOTATOR_ORIGIN=mistral-vibe baked in; not installed on Windows
 │   ├── kiro-cli/                 # Kiro CLI integration source (consumed by scripts/install.sh; auto-detected via ~/.kiro)
 │   │   ├── agents/plannotator.json   # Example Kiro custom agent
 │   │   └── skills/               # Kiro-specific skill packages (review, annotate); setup-goal + visual-explainer install from apps/skills/extra
@@ -463,6 +466,7 @@ Ask AI providers are detected independently from installed/authenticated local C
 | `pi` | `pi-sdk` |
 | `copilot-cli` | no dedicated provider; fallback to saved/server default |
 | `gemini-cli` | no dedicated provider; fallback to saved/server default |
+| `mistral-vibe` | no dedicated provider; fallback to saved/server default |
 
 Automatic resolution is session-only and never writes a preference. Explicit per-origin choices are persisted in cookies, so a user can override the automatic match for one agent without changing the default for another.
 

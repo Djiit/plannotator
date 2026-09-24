@@ -125,9 +125,9 @@ Options:
                          (~/.kiro skills and agent). Env var:
                          PLANNOTATOR_SKIP_KIRO_INSTALL; config key:
                          skipInstall.kiro.
-  --skip-vibe           Same opt-out for the Mistral Vibe integration
-                         (hooks.toml + config.toml under VIBE_HOME, and the
-                         Vibe-home skills). Env var:
+  --skip-vibe            Same opt-out for the Mistral Vibe integration
+                         (the managed hooks.toml block and the skills under
+                         VIBE_HOME). Env var:
                          PLANNOTATOR_SKIP_VIBE_INSTALL; config key:
                          skipInstall.vibe.
   --skip-opencode        Do not write the OpenCode integration (command stubs
